@@ -34,7 +34,6 @@
 		text-align: center;
 	}
 </style>
-<script type="text/javascript" src="leap.js"></script>
 <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="webgl-utils.js"></script>
 <script type="text/javascript" src="stars.js"></script>
@@ -950,10 +949,6 @@
     var ws = null;
     
     function webGLStart() {
-    	Leap.loop(function(frame) {
-    		if(frame.fingers[0])
-	    		console.log(frame.fingers[0].tipPosition);
-    	});
         var canvas = document.getElementById("canvas");
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
