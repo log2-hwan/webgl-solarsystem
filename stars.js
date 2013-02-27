@@ -6,9 +6,9 @@ var stars = [{
 	ecc:0.0,
 	incl:0.0,
 	tilt:0,
-	src:"../Planets/sunmap.jpg",
+	src:"Planets/sunmap.jpg",
 	ring:null,
-	bump:"../Planets/green.jpg",
+	bump:"Planets/green.jpg",
 	usebump:false,
 	satlites:[]
 },{
@@ -19,9 +19,9 @@ var stars = [{
 	ecc:0.206,
 	incl:3.38,
 	tilt:0.0352,
-	src:"../Planets/mercurymap.jpg",
+	src:"Planets/mercurymap.jpg",
 	ring:null,
-	bump:"../Planets/mercurybump_NRM.png",
+	bump:"Planets/mercurybump_NRM.png",
 	usebump:true,
 	satlites:[]
 },{
@@ -32,9 +32,9 @@ var stars = [{
 	ecc:0.007,
 	incl:3.86,
 	tilt:177.4,
-	src:"../Planets/venusmap.jpg",
+	src:"Planets/venusmap.jpg",
 	ring:null,
-	bump:"../Planets/venusbump_NRM.png",
+	bump:"Planets/venusbump_NRM.png",
 	usebump:true,
 	satlites:[]
 },{
@@ -45,9 +45,9 @@ var stars = [{
 	ecc:0.017,
 	incl:7.25,
 	tilt:23.44,
-	src:"../Planets/earthmap1k.jpg",
+	src:"Planets/earthmap1k.jpg",
 	ring:null,
-	bump:"../Planets/earthbump1k_NRM.png",
+	bump:"Planets/earthbump1k_NRM.png",
 	usebump:true,
 	satlites:[{
 		searchterm:'Moon',
@@ -56,9 +56,9 @@ var stars = [{
 		radius:0.04,
 		ecc:0.0554,
 		incl:0.0012,
-		src:"../Planets/moonmap1k.jpg",
+		src:"Planets/moonmap1k.jpg",
 		ring:null,
-		bump:"../Planets/moonbump1k_NRM.png",
+		bump:"Planets/moonbump1k_NRM.png",
 		usebump:true
 	}]
 },{
@@ -69,9 +69,9 @@ var stars = [{
 	ecc:0.093,
 	incl:5.65,
 	tilt:25.19,
-	src:"../Planets/mars_1k_color.jpg",
+	src:"Planets/mars_1k_color.jpg",
 	ring:null,
-	bump:"../Planets/marsbump1k_NRM.png",
+	bump:"Planets/marsbump1k_NRM.png",
 	usebump:true,
 	satlites:[{
 		searchterm:'Phobos',
@@ -80,9 +80,9 @@ var stars = [{
 		radius:0.004*2,
 		ecc:0.015,
 		incl:1.093,
-		src:"../Planets/phobos.jpg",
+		src:"Planets/phobos.jpg",
 		ring:null,
-		bump:"../Planets/green.jpg",
+		bump:"Planets/green.jpg",
 		usebump:false
 	},{
 		searchterm:'Deimos',
@@ -91,9 +91,9 @@ var stars = [{
 		radius:0.002*2,
 		ecc:0.0,
 		incl:0.93,
-		src:"../Planets/deimos.jpg",
+		src:"Planets/deimos.jpg",
 		ring:null,
-		bump:"../Planets/green.jpg",
+		bump:"Planets/green.jpg",
 		usebump:false
 	}]
 },{
@@ -104,9 +104,9 @@ var stars = [{
 	ecc:0.048,
 	incl:6.09,
 	tilt:3.13,
-	src:"../Planets/jupitermap.jpg",
+	src:"Planets/jupitermap.jpg",
 	ring:null,
-	bump:"../Planets/green.jpg",
+	bump:"Planets/green.jpg",
 	usebump:false,
 	satlites:[{
 		searchterm:'Ganymede',
@@ -115,9 +115,9 @@ var stars = [{
 		radius:0.023*4,
 		ecc:0.0013,
 		incl:0.20,
-		src:"../Planets/ganymede.jpg",
+		src:"Planets/ganymede.jpg",
 		ring:null,
-		bump:"../Planets/green.jpg",
+		bump:"Planets/green.jpg",
 		usebump:false
 	},{
 		searchterm:'Callisto',
@@ -126,9 +126,9 @@ var stars = [{
 		radius:0.02*4,
 		ecc:0.007,
 		incl:0.192,
-		src:"../Planets/callisto.jpg",
+		src:"Planets/callisto.jpg",
 		ring:null,
-		bump:"../Planets/green.jpg",
+		bump:"Planets/green.jpg",
 		usebump:false
 	},{
 		searchterm:'Io',
@@ -137,9 +137,9 @@ var stars = [{
 		radius:0.015*4,
 		ecc:0.004,
 		incl:0.05,
-		src:"../Planets/io.jpg",
+		src:"Planets/io.jpg",
 		ring:null,
-		bump:"../Planets/green.jpg",
+		bump:"Planets/green.jpg",
 		usebump:false
 	},{
 		searchterm:'Europa',
@@ -148,9 +148,9 @@ var stars = [{
 		radius:0.012*4,
 		ecc:0.009,
 		incl:0.470,
-		src:"../Planets/europa.jpg",
+		src:"Planets/europa.jpg",
 		ring:null,
-		bump:"../Planets/green.jpg",
+		bump:"Planets/green.jpg",
 		usebump:false
 	}]
 },{
@@ -161,10 +161,10 @@ var stars = [{
 	ecc:0.054,
 	incl:5.51,
 	tilt:26.73,
-	src:"../Planets/saturnmap.jpg",
-	ring:"../Planets/saturnringcolor.jpg",
-	ringalpha:"../Planets/saturnringpattern.gif",
-	bump:"../Planets/green.jpg",
+	src:"Planets/saturnmap.jpg",
+	ring:"Planets/saturnringcolor.jpg",
+	ringalpha:"Planets/saturnringpattern.gif",
+	bump:"Planets/green.jpg",
 	usebump:false,
 	satlites:[{
 		searchterm:'Titan',
@@ -173,9 +173,9 @@ var stars = [{
 		radius:0.02*4,
 		ecc:0.0288,
 		incl:0.348,
-		src:"../Planets/titan.jpg",
+		src:"Planets/titan.jpg",
 		ring:null,
-		bump:"../Planets/green.jpg",
+		bump:"Planets/green.jpg",
 		usebump:false
 	},{
 		searchterm:'Rhea',
@@ -184,9 +184,9 @@ var stars = [{
 		radius:0.012*4,
 		ecc:0.001,
 		incl:0.345,
-		src:"../Planets/rhea.jpg",
+		src:"Planets/rhea.jpg",
 		ring:null,
-		bump:"../Planets/green.jpg",
+		bump:"Planets/green.jpg",
 		usebump:false
 	},{
 		searchterm:'Iapetus',
@@ -195,9 +195,9 @@ var stars = [{
 		radius:0.011*4,
 		ecc:0.028,
 		incl:15.47,
-		src:"../Planets/iapetus.jpg",
+		src:"Planets/iapetus.jpg",
 		ring:null,
-		bump:"../Planets/green.jpg",
+		bump:"Planets/green.jpg",
 		usebump:false
 	},{
 		searchterm:'Dione',
@@ -206,9 +206,9 @@ var stars = [{
 		radius:0.004*4,
 		ecc:0.002,
 		incl:0.019,
-		src:"../Planets/dione.jpg",
+		src:"Planets/dione.jpg",
 		ring:null,
-		bump:"../Planets/green.jpg",
+		bump:"Planets/green.jpg",
 		usebump:false
 	},{
 		searchterm:'Tethys',
@@ -217,9 +217,9 @@ var stars = [{
 		radius:0.009*4,
 		ecc:0.0,
 		incl:1.12,
-		src:"../Planets/tethys.jpg",
+		src:"Planets/tethys.jpg",
 		ring:null,
-		bump:"../Planets/green.jpg",
+		bump:"Planets/green.jpg",
 		usebump:false
 	}]
 },{
@@ -230,10 +230,10 @@ var stars = [{
 	ecc:0.047,
 	incl:6.48,
 	tilt:97.77,
-	src:"../Planets/uranusmap.jpg",
-	ring:"../Planets/uranusringcolor.jpg",
-	ringalpha:"../Planets/uranusringtrans.jpg",
-	bump:"../Planets/green.jpg",
+	src:"Planets/uranusmap.jpg",
+	ring:"Planets/uranusringcolor.jpg",
+	ringalpha:"Planets/uranusringtrans.jpg",
+	bump:"Planets/green.jpg",
 	usebump:false,
 	satlites:[{
 		searchterm:'Titania',
@@ -242,9 +242,9 @@ var stars = [{
 		radius:0.007*4,
 		ecc:0.0011,
 		incl:0.340,
-		src:"../Planets/titania.jpg",
+		src:"Planets/titania.jpg",
 		ring:null,
-		bump:"../Planets/green.jpg",
+		bump:"Planets/green.jpg",
 		usebump:false
 	},{
 		searchterm:'Oberon',
@@ -253,9 +253,9 @@ var stars = [{
 		radius:0.006*4,
 		ecc:0.0014,
 		incl:0.058,
-		src:"../Planets/oberon.jpg",
+		src:"Planets/oberon.jpg",
 		ring:null,
-		bump:"../Planets/green.jpg",
+		bump:"Planets/green.jpg",
 		usebump:false
 	},{
 		searchterm:'Umbriel',
@@ -264,9 +264,9 @@ var stars = [{
 		radius:0.005*4,
 		ecc:0.0039,
 		incl:0.128,
-		src:"../Planets/umbriel.jpg",
+		src:"Planets/umbriel.jpg",
 		ring:null,
-		bump:"../Planets/green.jpg",
+		bump:"Planets/green.jpg",
 		usebump:false
 	},{
 		searchterm:'Ariel',
@@ -275,9 +275,9 @@ var stars = [{
 		radius:0.005*4,
 		ecc:0.0012,
 		incl:0.260,
-		src:"../Planets/ariel.jpg",
+		src:"Planets/ariel.jpg",
 		ring:null,
-		bump:"../Planets/green.jpg",
+		bump:"Planets/green.jpg",
 		usebump:false
 	}]
 },{
@@ -288,9 +288,9 @@ var stars = [{
 	ecc:0.009,
 	incl:6.43,
 	tilt:28.32,
-	src:"../Planets/neptunemap.jpg",
+	src:"Planets/neptunemap.jpg",
 	ring:null,
-	bump:"../Planets/green.jpg",
+	bump:"Planets/green.jpg",
 	usebump:false,
 	satlites:[{
 		searchterm:'Triton',
@@ -299,9 +299,9 @@ var stars = [{
 		radius:0.011*4,
 		ecc:0.0,
 		incl:156.885,
-		src:"../Planets/triton.jpg",
+		src:"Planets/triton.jpg",
 		ring:null,
-		bump:"../Planets/green.jpg",
+		bump:"Planets/green.jpg",
 		usebump:false
 	}]
 }];
