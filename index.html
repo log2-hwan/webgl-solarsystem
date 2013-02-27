@@ -1,0 +1,1045 @@
+<html>
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+<style type="text/css">
+	html, body {
+		margin: 0px;
+		padding: 0px;
+		width: 100%;
+		height: 100%;
+	}
+	.float {
+		position: absolute;
+		width: 400px;
+		height: 100px;
+		font-size: 15px;
+		line-height: 18px;
+		top: 10px;
+		left: 10px;
+		background: skyblue;
+		opacity: 0.5;
+	}
+	.right {
+		position: absolute;
+		top: 150px;
+		left: 10px;
+		background: skyblue;
+		opacity: 0.5;
+		padding-top: 20px;
+		font-size: 20px;
+		width: 200px;
+		height: 40px;
+		text-align: center;
+	}
+</style>
+<script type="text/javascript" src="leap.js"></script>
+<script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
+<script type="text/javascript" src="webgl-utils.js"></script>
+<script type="text/javascript" src="stars.js"></script>
+
+<script id="shader-lensfs" type="x-shader/x-fragment">
+	precision mediump float;
+	
+	uniform vec4 uColor;
+	uniform sampler2D uSampler;
+
+	varying vec2 vTexCoord;	
+
+	void main(void) {
+		gl_FragColor = texture2D(uSampler,vTexCoord)*uColor;
+	}
+</script>
+
+<script id="shader-lensvs" type="x-shader/x-vertex">
+	precision mediump float;
+	
+	uniform vec4 uRect;
+	uniform mat4 ortho;
+	attribute vec2 aVertexPosition;
+	varying vec2 vTexCoord;
+
+	void main(void) {
+		vTexCoord = aVertexPosition;
+		gl_Position = vec4((aVertexPosition.x*uRect.z+uRect.x),(aVertexPosition.y*uRect.w+uRect.y),0.0,1.0);
+	}
+</script>
+
+<script id="ring-fs" type="x-shader/x-fragment">
+    precision mediump float;
+
+    varying vec2 vTextureCoord;
+
+    uniform sampler2D uSampler;
+    uniform sampler2D alpha;
+
+    void main(void) {
+    	vec4 color = texture2D(uSampler, vTextureCoord);
+        gl_FragColor = vec4(color.rgb, color.a*texture2D(alpha, vTextureCoord).r);
+    }
+</script>
+
+<script id="ring-vs" type="x-shader/x-vertex">
+    attribute vec3 aVertexPosition;
+    attribute vec2 aTextureCoord;
+
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+    uniform mat4 uVMatrix;
+    uniform float radius;
+
+    varying vec2 vTextureCoord;
+
+    void main(void) {
+        gl_Position = uPMatrix * uVMatrix * uMVMatrix * vec4(aVertexPosition*radius, 1.0);
+        vTextureCoord = aTextureCoord;
+    }
+</script>
+
+<script id="shader-orbfs" type="x-shader/x-fragment">
+	void main(void) {
+		gl_FragColor = vec4(1.0,1.0,1.0,1.0);
+	}
+</script>
+
+<script id="shader-orbvs" type="x-shader/x-vertex">
+	precision mediump float;
+	
+	uniform vec3 center;
+	uniform float ecc;
+	uniform float rad;
+	uniform float incl;
+	uniform mat4 uPMatrix;
+    uniform mat4 uVMatrix;
+	attribute float theta;
+
+	void main(void) {
+		float r = (rad*(1.0-ecc*ecc))/(1.0+ecc*cos(theta));
+		gl_Position = uPMatrix * uVMatrix * vec4(center.x+cos(theta)*r,center.y+sin(incl)*cos(theta)*r,center.z+sin(theta)*r,1.0);
+	}
+</script>
+
+<script id="shader-fs" type="x-shader/x-fragment">
+    precision mediump float;
+
+    varying vec2 vTextureCoord;
+    varying vec3 vTransformedNormal;
+    varying vec4 vPosition;
+    
+    uniform vec3 uAmbientColor;
+
+    uniform vec3 uLightingDirection;
+    uniform vec3 uDiffuseColor;
+    uniform vec3 uSpecularColor;
+    uniform vec3 uEyePos;
+    
+    uniform bool uUseLighting;
+    uniform bool useBump;
+
+    uniform sampler2D uSampler;
+    uniform sampler2D bump;
+
+    void main(void) {
+        vec3 lightWeighting = vec3(1.0,1.0,1.0);
+	    vec3 lightDirection = normalize(-vPosition.xyz);
+	    vec3 normal = normalize(vTransformedNormal);
+	    vec3 eyePos = uEyePos;
+
+		if(uUseLighting) {
+		    float dlightWeighting;
+			if(useBump) {
+				vec3 exNorm = texture2D(bump,vTextureCoord).rgb*2.0-1.0;
+				normal = normalize(normal-exNorm);
+		    }
+		    dlightWeighting = max(dot(normal, lightDirection), 0.0);
+		    float specularLightWeighting = 0.0;
+	        vec3 eyeDirection = normalize(eyePos-vPosition.xyz);
+	        vec3 reflectionDirection = reflect(-lightDirection, normal);
+
+	        specularLightWeighting = pow(max(dot(reflectionDirection, eyeDirection), 0.0), 100.0);
+	
+	        lightWeighting = uAmbientColor
+	                + uSpecularColor * specularLightWeighting                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+	                + uDiffuseColor * dlightWeighting;
+		}
+		
+	    vec4 fragmentColor;
+	    fragmentColor = texture2D(uSampler,vTextureCoord);
+		gl_FragColor = vec4(fragmentColor.rgb * lightWeighting, fragmentColor.a);
+    }
+</script>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+    attribute vec3 aVertexPosition;
+    attribute vec3 aVertexNormal;
+    attribute vec2 aTextureCoord;
+    
+    uniform float radius;
+    
+    uniform mat4 uMVMatrix;
+    uniform mat4 uVMatrix;
+    uniform mat4 uPMatrix;
+    uniform mat3 uNMatrix;
+
+    varying vec2 vTextureCoord;
+    varying vec3 vTransformedNormal;
+    varying vec4 vPosition;
+
+    void main(void) {
+        vPosition = uMVMatrix * vec4(aVertexPosition*radius, 1.0);
+        gl_Position = uPMatrix * uVMatrix * vPosition;
+        vTextureCoord = aTextureCoord;
+        vTransformedNormal = uNMatrix * aVertexNormal;
+    }
+</script>
+
+
+<script type="text/javascript">
+	var flares = [{
+		distance:-0.1,
+		size:0.5,
+		rgba:[160,120,120,255]
+	},{
+		distance:0.0,
+		size:1.5,
+		rgba:[255,255,255,255]
+	},{
+		distance:0.0,
+		size:0.7,
+		rgba:[255,170,170,255]
+	},{
+		distance:0.0,
+		size:8.0,
+		rgba:[173,131,138,255]
+	},{
+		distance:0.3,
+		size:1.0,
+		rgba:[100,120,150,255]
+	},{
+		distance:0.35,
+		size:0.75,
+		rgba:[145,110,100,255]
+	},{
+		distance:0.5,
+		size:0.07,
+		rgba:[50,50,150,255]
+	},{
+		distance:0.6,
+		size:0.15,
+		rgba:[80,150,80,255]
+	},{
+		distance:0.65,
+		size:0.25,
+		rgba:[110,75,40,255]
+	},{
+		distance:0.67,
+		size:0.5,
+		rgba:[110,75,140,255]
+	},{
+		distance:0.67,
+		size:0.7,
+		rgba:[110,75,40,255]
+	},{
+		distance:0.7,
+		size:0.35,
+		rgba:[48,87,111,255]
+	},{
+		distance:0.8,
+		size:0.7,
+		rgba:[30,50,20,200]
+	},{
+		distance:0.8,
+		size:1.4,
+		rgba:[30,50,40,200]
+	}];
+
+    var gl;
+
+    function initGL(canvas) {
+        try {
+            gl = canvas.getContext("experimental-webgl");
+            gl.viewportWidth = canvas.width;
+            gl.viewportHeight = canvas.height;
+        } catch (e) {
+        }
+        if (!gl) {
+            alert("Could not initialise WebGL, sorry :-(");
+        }
+    }
+
+
+    function getShader(gl, id) {
+        var shaderScript = document.getElementById(id);
+        if (!shaderScript) {
+            return null;
+        }
+
+        var str = "";
+        var k = shaderScript.firstChild;
+        while (k) {
+            if (k.nodeType == 3) {
+                str += k.textContent;
+            }
+            k = k.nextSibling;
+        }
+
+        var shader;
+        if (shaderScript.type == "x-shader/x-fragment") {
+            shader = gl.createShader(gl.FRAGMENT_SHADER);
+        } else if (shaderScript.type == "x-shader/x-vertex") {
+            shader = gl.createShader(gl.VERTEX_SHADER);
+        } else {
+            return null;
+        }
+
+        gl.shaderSource(shader, str);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert(gl.getShaderInfoLog(shader));
+            return null;
+        }
+
+        return shader;
+    }
+
+
+    var shaderProgram;
+    var orbProgram;
+    var ringProgram;
+    var lensflareProgram;
+
+    function initShaders() {
+        var fragmentShader = getShader(gl, "shader-fs");
+        var vertexShader = getShader(gl, "shader-vs");
+        var orbFragShader = getShader(gl, "shader-orbfs");
+        var orbVertShader = getShader(gl, "shader-orbvs");
+        var ringFragShader = getShader(gl, "ring-fs");
+        var ringVertShader = getShader(gl, "ring-vs");
+
+        shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+        
+        orbProgram = gl.createProgram();
+        gl.attachShader(orbProgram, orbVertShader);
+        gl.attachShader(orbProgram, orbFragShader);
+        gl.linkProgram(orbProgram);
+      
+        ringProgram = gl.createProgram();
+        gl.attachShader(ringProgram, ringVertShader);
+        gl.attachShader(ringProgram, ringFragShader);
+        gl.linkProgram(ringProgram);
+
+		lensflareProgram = gl.createProgram();
+		gl.attachShader(lensflareProgram, getShader(gl, "shader-lensfs"));
+        gl.attachShader(lensflareProgram, getShader(gl, "shader-lensvs"));
+        gl.linkProgram(lensflareProgram);
+
+        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+            alert("Could not initialise shaders");
+        }
+        if (!gl.getProgramParameter(orbProgram, gl.LINK_STATUS)) {
+            alert("Could not initialise orb shaders");
+        }
+        if (!gl.getProgramParameter(ringProgram, gl.LINK_STATUS)) {
+            alert("Could not initialise ring shaders");
+        }
+        if (!gl.getProgramParameter(lensflareProgram, gl.LINK_STATUS)) {
+            alert("Could not initialise lensflare shaders");
+        }
+
+        gl.useProgram(shaderProgram);
+
+        shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+        gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+
+        shaderProgram.textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord");
+        gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute);
+
+        shaderProgram.vertexNormalAttribute = gl.getAttribLocation(shaderProgram, "aVertexNormal");
+        gl.enableVertexAttribArray(shaderProgram.vertexNormalAttribute);
+
+        shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
+        shaderProgram.vMatrixUniform = gl.getUniformLocation(shaderProgram, "uVMatrix");
+        shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+        shaderProgram.nMatrixUniform = gl.getUniformLocation(shaderProgram, "uNMatrix");
+        shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler");
+        shaderProgram.ambientColorUniform = gl.getUniformLocation(shaderProgram, "uAmbientColor");
+        shaderProgram.lightingDirectionUniform = gl.getUniformLocation(shaderProgram, "uLightingDirection");
+        shaderProgram.useLighting = gl.getUniformLocation(shaderProgram, "uUseLighting");
+        shaderProgram.directionalColorUniform = gl.getUniformLocation(shaderProgram, "uDiffuseColor");
+        shaderProgram.eyePosition = gl.getUniformLocation(shaderProgram, "uEyePos");
+        shaderProgram.specularColorUniform = gl.getUniformLocation(shaderProgram, "uSpecularColor");
+        shaderProgram.radius = gl.getUniformLocation(shaderProgram, "radius");
+        shaderProgram.bumpUniform = gl.getUniformLocation(shaderProgram, "bump");
+        shaderProgram.useBump = gl.getUniformLocation(shaderProgram, "useBump");
+        
+        gl.uniform3f(shaderProgram.ambientColorUniform,0.2,0.2,0.2);
+        gl.uniform3f(shaderProgram.directionalColorUniform,0.7,0.7,0.7);
+        gl.uniform3f(shaderProgram.specularColorUniform,1.0,1.0,1.0);
+        
+        gl.useProgram(orbProgram);
+        
+        orbProgram.pMatrixUniform = gl.getUniformLocation(orbProgram, "uPMatrix");
+        orbProgram.vMatrixUniform = gl.getUniformLocation(orbProgram, "uVMatrix");
+        orbProgram.ecc = gl.getUniformLocation(orbProgram, "ecc");
+        orbProgram.incl = gl.getUniformLocation(orbProgram, "incl");
+        orbProgram.rad = gl.getUniformLocation(orbProgram, "rad");
+        orbProgram.center = gl.getUniformLocation(orbProgram, "center");
+        orbProgram.thetaAttribute = gl.getAttribLocation(orbProgram, "theta");
+        
+        gl.useProgram(ringProgram);
+        
+        ringProgram.pMatrixUniform = gl.getUniformLocation(ringProgram, "uPMatrix");
+        ringProgram.vMatrixUniform = gl.getUniformLocation(ringProgram, "uVMatrix");
+        ringProgram.mvMatrixUniform = gl.getUniformLocation(ringProgram, "uMVMatrix");
+        ringProgram.samplerUniform = gl.getUniformLocation(ringProgram, "uSampler");
+        ringProgram.alphaUniform = gl.getUniformLocation(ringProgram, "alpha");
+        ringProgram.radius = gl.getUniformLocation(ringProgram, "radius");
+        ringProgram.vertexPositionAttribute = gl.getAttribLocation(ringProgram, "aVertexPosition");
+		ringProgram.textureCoordAttribute = gl.getAttribLocation(ringProgram, "aTextureCoord");
+        
+        gl.useProgram(lensflareProgram);
+        
+        lensflareProgram.samplerUniform = gl.getUniformLocation(lensflareProgram, "uSampler");
+        lensflareProgram.color = gl.getUniformLocation(lensflareProgram, "uColor");
+        lensflareProgram.rect = gl.getUniformLocation(lensflareProgram, "uRect");
+        lensflareProgram.vertices = gl.getAttribLocation(lensflareProgram, "aVertexPosition");
+        flaretexture = getTexture("lensflare1.png");
+        sunflaretexture = getTexture("lensflare0.png");
+         
+        gl.useProgram(shaderProgram);
+    }
+
+    function handleLoadedTexture(texture) {
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+        gl.generateMipmap(gl.TEXTURE_2D);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+    
+    function getTexture(src) {
+    	var texture = gl.createTexture();
+    	texture.image = new Image();
+    	texture.image.onload = function() {
+    		handleLoadedTexture(texture);
+    	};
+    	console.log(src);
+    	texture.image.src = src;
+    	return texture;
+    }
+
+    var mvMatrix = mat4.create();
+    var mvMatrixStack = [];
+    var pMatrix = mat4.create();
+    var vMatrix = mat4.create();
+
+    function mvPushMatrix() {
+        var copy = mat4.create();
+        mat4.set(mvMatrix, copy);
+        mvMatrixStack.push(copy);
+    }
+
+    function mvPopMatrix() {
+        if (mvMatrixStack.length == 0) {
+            throw "Invalid popMatrix!";
+        }
+        mvMatrix = mvMatrixStack.pop();
+    }
+
+    function setMatrixUniforms() {
+        gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
+        gl.uniformMatrix4fv(shaderProgram.vMatrixUniform, false, vMatrix);
+        //gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+		
+        for(var i=1;i<starList.length;i++) {
+        	gl.uniform1i(shaderProgram.useLighting, true);
+        	starList[i].setMatrixs();
+        	starList[i].setTexture();
+        	starList[i].draw();
+        	for(var j=0;j<starList[i].satlites.length;j++) {
+	        	starList[i].satlites[j].setMatrixs();
+	        	starList[i].satlites[j].setTexture();
+	        	starList[i].satlites[j].draw();
+        	}
+        }
+    }
+
+    function degToRad(degrees) {
+        return degrees * Math.PI / 180;
+    }
+
+    var mouseDown = false;
+    var lastMouseX = null;
+    var lastMouseY = null;
+
+    var moonRotationMatrix = mat4.create();
+    mat4.identity(moonRotationMatrix);
+
+    function handleMouseDown(event) {
+        mouseDown = true;
+        lastMouseX = event.clientX;
+        lastMouseY = event.clientY;
+    }
+
+
+    function handleMouseUp(event) {
+        mouseDown = false;
+    }
+
+
+    function handleMouseMove(event) {
+        if (!mouseDown) {
+            return;
+        }
+        var newX = event.clientX;
+        var newY = event.clientY;
+
+        var deltaX = newX - lastMouseX;
+        //console.log("X: "+(-deltaX / 10));
+        mat4.rotate(newRotationMatrix, degToRad(-deltaX / 10), [0, 1, 0]);
+
+        var deltaY = newY - lastMouseY;
+        //console.log("Y: "+(-deltaY / 10));
+        mat4.rotate(newRotationMatrix, degToRad(deltaY / 10), [1, 0, 0]);
+
+        lastMouseX = newX;
+        lastMouseY = newY;
+    }
+
+	var newRotationMatrix = mat4.create();
+	mat4.identity(newRotationMatrix);
+    var moonVertexPositionBuffer;
+    var moonVertexNormalBuffer;
+    var moonVertexTextureCoordBuffer;
+    var moonVertexIndexBuffer;
+    var moonOrbBuffer;
+    var ringVertexPositionBuffer;
+    var ringVertexTextureCoordBuffer;
+    var ringVertexIndexBuffer;
+    var lensflareBuffer;
+
+    function initBuffers() {
+        var latitudeBands = 50;
+        var longitudeBands = 50;
+        var radius = 2;
+
+        var vertexPositionData = [];
+        var normalData = [];
+        var textureCoordData = [];
+        for (var latNumber=0; latNumber <= latitudeBands; latNumber++) {
+            var theta = latNumber * Math.PI / latitudeBands;
+            var sinTheta = Math.sin(theta);
+            var cosTheta = Math.cos(theta);
+
+            for (var longNumber=0; longNumber <= longitudeBands; longNumber++) {
+                var phi = longNumber * 2 * Math.PI / longitudeBands;
+                var sinPhi = Math.sin(phi);
+                var cosPhi = Math.cos(phi);
+
+                var x = cosPhi * sinTheta;
+                var y = cosTheta;
+                var z = sinPhi * sinTheta;
+                var u = 1 - (longNumber / longitudeBands);
+                var v = 1 - (latNumber / latitudeBands);
+
+                normalData.push(x);
+                normalData.push(y);
+                normalData.push(z);
+                textureCoordData.push(u);
+                textureCoordData.push(v);
+                vertexPositionData.push(radius * x);
+                vertexPositionData.push(radius * y);
+                vertexPositionData.push(radius * z);
+            }
+        }
+
+        var indexData = [];
+        for (var latNumber=0; latNumber < latitudeBands; latNumber++) {
+            for (var longNumber=0; longNumber < longitudeBands; longNumber++) {
+                var first = (latNumber * (longitudeBands + 1)) + longNumber;
+                var second = first + longitudeBands + 1;
+                indexData.push(first);
+                indexData.push(second);
+                indexData.push(first + 1);
+
+                indexData.push(second);
+                indexData.push(second + 1);
+                indexData.push(first + 1);
+            }
+        }
+
+        moonVertexNormalBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexNormalBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalData), gl.STATIC_DRAW);
+        moonVertexNormalBuffer.itemSize = 3;
+        moonVertexNormalBuffer.numItems = normalData.length / 3;
+
+        moonVertexTextureCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordData), gl.STATIC_DRAW);
+        moonVertexTextureCoordBuffer.itemSize = 2;
+        moonVertexTextureCoordBuffer.numItems = textureCoordData.length / 2;
+
+        moonVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositionData), gl.STATIC_DRAW);
+        moonVertexPositionBuffer.itemSize = 3;
+        moonVertexPositionBuffer.numItems = vertexPositionData.length / 3;
+
+        moonVertexIndexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, moonVertexIndexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW);
+        moonVertexIndexBuffer.itemSize = 1;
+        moonVertexIndexBuffer.numItems = indexData.length;
+        
+        gl.useProgram(orbProgram);
+        
+        var thetaArr = []; 
+        for(var i=0;i<360;i++) {
+        	thetaArr.push(Math.PI*i/180);
+//        	thetaArr.push(Math.PI*(i+1)/50);
+        }
+        
+        moonOrbBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonOrbBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(thetaArr), gl.STATIC_DRAW);
+        
+        gl.useProgram(ringProgram);
+        
+        var vData = [];
+        var tData = [];
+		for(var i=0;i<100;i++) {
+			var theta = Math.PI/50*i;
+			vData.push(Math.cos(theta)*4);
+			vData.push(0);
+			vData.push(Math.sin(theta)*4);
+			vData.push(Math.cos(theta)*3);
+			vData.push(0);
+			vData.push(Math.sin(theta)*3);
+			tData.push(1.0);
+			tData.push(i/100);
+			tData.push(0.0);
+			tData.push(i/100);
+		}
+
+        var iData = [];
+        for(var i=0;i<200;i++) {
+        	iData.push(i%200);
+        	iData.push((i+1)%200);
+        	iData.push((i+2)%200);
+        }
+
+        ringVertexTextureCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, ringVertexTextureCoordBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(tData), gl.STATIC_DRAW);
+        ringVertexTextureCoordBuffer.itemSize = 2;
+        ringVertexTextureCoordBuffer.numItems = tData.length / 2;
+
+        ringVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, ringVertexPositionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vData), gl.STATIC_DRAW);
+        ringVertexPositionBuffer.itemSize = 3;
+        ringVertexPositionBuffer.numItems = vData.length / 3;
+
+        ringVertexIndexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ringVertexIndexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(iData), gl.STATIC_DRAW);
+        ringVertexIndexBuffer.itemSize = 1;
+        ringVertexIndexBuffer.numItems = iData.length;
+        
+        gl.useProgram(lensflareProgram);
+        
+        lensflareBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, lensflareBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,0,1,0,0,1,0,1,1,0,1,1]), gl.STATIC_DRAW);
+        
+        gl.useProgram(shaderProgram);
+    }
+
+
+    function drawScene() {
+        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, moonVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, moonVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexNormalBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute, moonVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, moonVertexIndexBuffer);
+        
+		gl.uniform1i(shaderProgram.useLighting, false);
+		starList[0].setMatrixs();
+		starList[0].setTexture();
+		starList[0].draw();
+        
+        gl.useProgram(lensflareProgram);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+        gl.enable(gl.BLEND);
+        
+        renderFlare();
+        
+        gl.disable(gl.BLEND);
+        gl.useProgram(shaderProgram);
+        
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, moonVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, moonVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexNormalBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute, moonVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, moonVertexIndexBuffer);
+        
+        setMatrixUniforms();
+        
+        gl.useProgram(orbProgram);
+        
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonOrbBuffer);
+        gl.vertexAttribPointer(orbProgram.thetaAttribute, 1, gl.FLOAT, false, 0, 0)
+        
+        gl.uniformMatrix4fv(orbProgram.pMatrixUniform, false, pMatrix);
+        gl.uniformMatrix4fv(orbProgram.vMatrixUniform, false, vMatrix);
+        
+        for(var i=0;i<starList.length;i++)
+        	starList[i].drawOrbit();
+        
+        gl.useProgram(ringProgram);
+        
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+        gl.enable(gl.BLEND);
+        
+        gl.bindBuffer(gl.ARRAY_BUFFER, ringVertexPositionBuffer);
+        gl.vertexAttribPointer(ringProgram.vertexPositionAttribute, ringVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, ringVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(ringProgram.textureCoordAttribute, ringVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ringVertexIndexBuffer);
+        
+        gl.uniformMatrix4fv(ringProgram.pMatrixUniform, false, pMatrix);
+        gl.uniformMatrix4fv(ringProgram.vMatrixUniform, false, vMatrix);
+        
+        for(var i=0;i<starList.length;i++)
+        	starList[i].drawRing();
+        
+        gl.useProgram(shaderProgram);
+        gl.disable(gl.BLEND);
+        //gl.drawElements(gl.TRIANGLES, moonVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+    }
+
+	var frame = 0;
+	var currentPlanet = 0;
+    var currentSatlite = 0;
+	var zoom = -20;
+    var lookAt = vec3.create([0,0,0]);
+    var up = vec3.create([0,1,0]);
+    var flaretexure = null;
+
+    function tick() {
+    	frame++;
+        requestAnimFrame(tick);
+        if(currentSatlite) {
+        	lookAt = vec3.create([starList[currentPlanet].satlites[currentSatlite-1].matrix[12],
+					starList[currentPlanet].satlites[currentSatlite-1].matrix[13],
+					starList[currentPlanet].satlites[currentSatlite-1].matrix[14]]);
+        } else {
+			lookAt = vec3.create([starList[currentPlanet].matrix[12],
+					starList[currentPlanet].matrix[13],
+					starList[currentPlanet].matrix[14]]);
+		}
+//		mat4.multiplyVec3(newRotationMatrix,lookAt,lookAt);
+//		mat4.multiplyVec3(newRotationMatrix,up,up);
+        var eye = vec3.create([0,-zoom*0.5,zoom]);
+        mat4.multiplyVec3(newRotationMatrix,eye,eye);
+        eye[0] += lookAt[0];
+        eye[1] += lookAt[1];
+        eye[2] += lookAt[2];
+        gl.uniform3fv(shaderProgram.eyePosition,eye);
+       	vMatrix = mat4.lookAt(eye,lookAt,up);
+        for(var i=0;i<starList.length;i++)
+        	starList[i].animate();
+        drawScene();
+    }
+    
+    function Star(revrad, time, radius, ecc, incl, tilt, src, ringsrc, bumpsrc, usebump, ringalphasrc) {
+    	this.matrix = mat4.create();
+    	mat4.identity(this.matrix);
+    	this.revRadius = revrad;
+    	this.time = time;
+    	this.radius = radius;
+    	this.texture = getTexture(src);
+    	this.usebump = usebump;
+    	this.tiltMatrix = mat4.create();
+	    mat4.identity(this.tiltMatrix);
+	    mat4.rotate(this.tiltMatrix, degToRad(tilt), [0, 0, 1]);
+    	if(bumpsrc)
+    		this.bump = getTexture(bumpsrc);
+    	if(ringsrc) {
+    		this.ring = getTexture(ringsrc);
+    		this.ringalpha = getTexture(ringalphasrc);
+    	}
+    	this.satlites = [];
+    	this.revCenter = [0,0,0];
+    	this.ecc = ecc;
+    	this.incl = degToRad(incl);
+    	this.draw = function() {
+        	gl.drawElements(gl.TRIANGLES, moonVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+    	};
+    	this.animate = function() {
+    		var newRotationMatrix = mat4.create();
+	        mat4.identity(newRotationMatrix);
+	        mat4.rotate(newRotationMatrix, degToRad(-frame%360), mat4.multiplyVec3(this.tiltMatrix,[0,1,0]));
+	        var deg = degToRad((frame/this.time/2)%360);
+	        var r = (this.revRadius*(1-this.ecc*this.ecc))/(1+this.ecc*Math.cos(deg));
+			var x = Math.cos(deg)*r;
+			var y = Math.sin(this.incl)*x;
+			var z = Math.sin(deg)*r;
+	        mat4.identity(this.matrix);
+	        mat4.translate(this.matrix,[0,0,0]);
+	        var newTranslationMatrix = mat4.create();
+	        mat4.identity(newTranslationMatrix);
+	        mat4.translate(newTranslationMatrix,[x,y,z]);
+	        mat4.multiply(this.tiltMatrix, this.matrix, this.matrix);
+	        mat4.multiply(newRotationMatrix, this.matrix, this.matrix);
+	        mat4.multiply(newTranslationMatrix, this.matrix, this.matrix);
+	        for(var i=0;i<this.satlites.length;i++) {
+	        	var sdeg = degToRad((frame/this.satlites[i].time/16)%360);
+	        	var sr = (this.satlites[i].revRadius*(1-this.satlites[i].ecc*this.satlites[i].ecc))/(1+this.satlites[i].ecc*Math.cos(sdeg));
+        		var sx = Math.cos(sdeg)*sr;
+        		var sy = Math.sin(this.satlites[i].incl)*sx;
+				var sz = Math.sin(sdeg)*sr;
+		        this.satlites[i].matrix[12] = x+sx;
+		        this.satlites[i].matrix[13] = y+sy;
+		        this.satlites[i].matrix[14] = z+sz;
+		        this.satlites[i].revCenter = [x,y,z];
+        	}
+    	};
+    	this.setMatrixs = function() {
+	        gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, this.matrix);
+        	gl.uniform1f(shaderProgram.radius,this.radius);
+        	var normalMatrix = mat3.create();
+	        mat4.toInverseMat3(this.matrix, normalMatrix);
+	        mat3.transpose(normalMatrix);
+	        gl.uniformMatrix3fv(shaderProgram.nMatrixUniform, false, normalMatrix);
+    	};
+    	this.setTexture = function() {
+    		gl.activeTexture(gl.TEXTURE0);
+    		gl.bindTexture(gl.TEXTURE_2D, this.texture);
+    		if(this.bump) {
+    			gl.activeTexture(gl.TEXTURE1);
+        		gl.bindTexture(gl.TEXTURE_2D, this.bump);
+			}
+        	gl.uniform1i(shaderProgram.samplerUniform, 0);
+        	if(this.usebump) {
+        		gl.uniform1i(shaderProgram.bumpUniform, 1);
+        		gl.uniform1i(shaderProgram.useBump, true);
+        	} else 
+        		gl.uniform1i(shaderProgram.useBump, false);
+    	};
+    	this.addSatlite = function(sat) {
+    		this.satlites.push(sat);
+    	};
+    	this.drawOrbit = function() {
+			gl.uniform1f(orbProgram.rad,this.revRadius);
+			gl.uniform1f(orbProgram.ecc,this.ecc);
+			gl.uniform1f(orbProgram.incl,this.incl);
+			gl.uniform3fv(orbProgram.center,this.revCenter);
+			gl.lineWidth(1);
+			gl.drawArrays(gl.LINE_LOOP,0,360);
+			for(var i=0;i<this.satlites.length;i++) {
+				this.satlites[i].drawOrbit();
+			}
+    	};
+    	this.drawRing = function() {
+    		if(this.ring) {
+    			gl.uniformMatrix4fv(ringProgram.mvMatrixUniform, false, this.matrix);
+    			gl.uniform1f(ringProgram.radius, this.radius);
+    			gl.activeTexture(gl.TEXTURE0);
+        		gl.bindTexture(gl.TEXTURE_2D, this.ring);
+        		gl.uniform1i(ringProgram.samplerUniform, 0);
+        		gl.activeTexture(gl.TEXTURE1);
+        		gl.bindTexture(gl.TEXTURE_2D, this.ringalpha);
+        		gl.uniform1i(ringProgram.alphaUniform, 1);
+        		gl.drawElements(gl.TRIANGLES, ringVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+    		}
+    	};
+    	return this;
+    }
+    
+    var starList = [];
+    var oripMatrix;
+    
+    function starInit() {
+    	for(var i=0;i<stars.length;i++) {
+    		starList.push(new Star(stars[i].revRadius,stars[i].time,stars[i].radius,stars[i].ecc,stars[i].incl,stars[i].tilt,stars[i].src,stars[i].ring,stars[i].bump,stars[i].usebump,stars[i].ringalpha));
+    		for(var j=0;j<stars[i].satlites.length;j++) {
+    			for(var k=j;k<stars[i].satlites.length;k++) {
+    				if(stars[i].satlites[j].revRadius>stars[i].satlites[k].revRadius) {
+    					var temp = stars[i].satlites[j];
+    					stars[i].satlites[j] = stars[i].satlites[k];
+    					stars[i].satlites[k] = temp;
+    				}
+    			}
+    		}
+    		
+    		for(var j=0;j<stars[i].satlites.length;j++)
+    			starList[i].addSatlite(new Star(stars[i].satlites[j].revRadius,stars[i].satlites[j].time,stars[i].satlites[j].radius,stars[i].satlites[j].ecc,stars[i].satlites[j].incl+stars[i].tilt,0,stars[i].satlites[j].src,stars[i].satlites[j].ring,stars[i].satlites[j].bump,stars[i].satlites[j].usebump));
+    	}
+    }
+    
+    function renderFlare() {
+	    var cx = window.innerWidth/2;
+	    var cy = window.innerHeight/2;
+	    var lpos = mat4.multiplyVec4(pMatrix,mat4.multiplyVec4(vMatrix,[0,0,0,1]));
+	    var lx = (lpos[0]/lpos[3]+1)*cx;
+	    var ly = (lpos[1]/lpos[3]+1)*cy;
+
+		if(lpos[2]<0) return;
+	    var maxflaredist = Math.sqrt(parseInt(cx*cx + cy*cy));
+	    var flaredist = Math.sqrt(parseInt((lx - cx)*(lx - cx)+(ly - cy)*(ly - cy)));
+	    flaredist = (maxflaredist - flaredist);
+	    var flaremaxsize = parseInt(window.innerWidth * 0.5);
+	    var flarescale = parseInt(window.innerWidth * 0.2);
+	
+	    var dx = cx + (cx - lx);
+	    var dy = cy + (cy - ly);
+	    
+	    gl.disable(gl.DEPTH_TEST);
+	    
+		gl.bindBuffer(gl.ARRAY_BUFFER, lensflareBuffer);
+		gl.vertexAttribPointer(lensflareProgram.vertices, 2, gl.FLOAT, false, 0, 0);
+	    for (var i=0; i<flares.length; i++)
+	    {
+	        var element = flares[i];
+	        gl.activeTexture(gl.TEXTURE0);
+	        if(element.distance) gl.bindTexture(gl.TEXTURE_2D, flaretexture);
+	        else gl.bindTexture(gl.TEXTURE_2D, sunflaretexture);
+			gl.uniform1i(lensflareProgram.samplerUniform,0);
+	        var px = (1.0 - element.distance)*lx + element.distance*dx;
+	        var py = (1.0 - element.distance)*ly + element.distance*dy;
+	        var width = ((flaredist*flarescale*element.size)/maxflaredist);
+	        if (width > flaremaxsize) {
+	            width = flaremaxsize;
+	        }
+	        var height = width;
+	        var alpha = (flaredist*element.rgba[3])/maxflaredist;
+	
+	        //if ( width > 1 ) {
+				gl.uniform4fv(lensflareProgram.color,[element.rgba[0],element.rgba[1],element.rgba[2],alpha]);
+				gl.uniform4fv(lensflareProgram.rect,[(px-width/2)/cx-1,(py-height/2)/cy-1,width/cx,height/cy]);
+				gl.drawArrays(gl.TRIANGLES, 0, 6);
+	        //}
+	    }
+	    gl.enable(gl.DEPTH_TEST);
+    }
+    
+    var ws = null;
+    
+    function webGLStart() {
+    	Leap.loop(function(frame) {
+    		if(frame.fingers[0])
+	    		console.log(frame.fingers[0].tipPosition);
+    	});
+        var canvas = document.getElementById("canvas");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        initGL(canvas);
+        initShaders();
+        initBuffers();
+
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.enable(gl.DEPTH_TEST);
+        
+        mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 10000.0, pMatrix);
+ 		
+ 		for(var i=0;i<flares.length;i++)
+ 			for(var j=0;j<4;j++)
+ 				flares[i].rgba[j] /= 255;
+ 		
+        canvas.onmousedown = handleMouseDown;
+        canvas.ontouchstart = function(e) {
+	    	handleMouseDown(e.changedTouches[0]);
+        };
+        document.onmouseup = handleMouseUp;
+        document.ontouchend = function(e) {
+        	if(e.touches.length>2) {
+        	} else if(e.touches.length>1) {
+        		canvas.webkitRequestFullscreen();
+	        	currentPlanet = (currentPlanet+1)%9;
+        		currentSatlite = 0;
+        		zoom = -starList[currentPlanet].radius-4;
+        		document.querySelector('.right').innerHTML = stars[currentPlanet].searchterm;
+        	} else
+	    		handleMouseUp(e.changedTouches[0]);
+        };
+        document.onmousemove = handleMouseMove; 
+        document.ontouchmove = function(e) {
+	    	handleMouseMove(e.changedTouches[0]);
+        };
+        window.onkeydown = function(e) {
+        	switch(e.keyCode) {
+        	case 38:
+        		zoom+=0.2;
+        		break;
+        	case 40:
+        		zoom-=0.2;
+        		break;
+        	case 32:
+        		currentPlanet = (currentPlanet+1)%9;
+        		currentSatlite = 0;
+        		zoom = -starList[currentPlanet].radius-4;
+        		document.querySelector('.right').innerHTML = stars[currentPlanet].searchterm;
+        		break;
+        	case 16:
+        		if(!starList[currentPlanet].satlites.length) return;
+        		currentSatlite = (currentSatlite+1)%(starList[currentPlanet].satlites.length+1);
+        		if(currentSatlite) {
+        			document.querySelector('.right').innerHTML = stars[currentPlanet].satlites[currentSatlite-1].searchterm;
+        			zoom = -starList[currentPlanet].satlites[currentSatlite-1].radius-4;
+        		} else {
+        			document.querySelector(".right").innerHTML = stars[currentPlanet].searchterm;
+        			zoom = -starList[currentPlanet].radius-4;
+        		}
+        		break;
+        	}
+        };
+        
+		starInit();
+		
+        tick();
+    }
+
+</script>
+
+
+</head>
+
+
+<body onload="webGLStart();">
+    <canvas id="canvas"></canvas>
+    <div class="float">
+    	<ul>
+    		<li>↑↓ key : Zoom In, Zoom out</li>
+    		<li>Mouse : View manipulation with focusing current star</li>
+    		<li>Space key : Move focus to next planet</li>
+    		<li>Shift key : Move focus to next satellite</li>
+    	</ul>
+    </div>
+    <div class="right">Sun</div>
+</body>
+
+</html>
